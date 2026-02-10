@@ -31,14 +31,15 @@ app.setErrorHandler(errorHandler);
 
 app.get('/', async () => {
   return {
-    name: 'Dino Wallet Service API',
-    status: 'ONLINE',
-    version: '1.0.0',
-    endpoints: {
-      health: '/v1/health',
-      transactions: '/v1/transactions',
-      accounts: '/v1/accounts'
-    }
+    project: 'Dino Ventures Wallet Service',
+    status: '⚡ Operational',
+    message: 'Welcome! This is a backend REST API. Use the links below for live testing in your browser.',
+    testing_links: {
+      system_health: '/v1/health',
+      sample_user_balances: '/v1/accounts/c0000001-0000-0000-0000-000000000001/balances',
+      sample_transaction_history: '/v1/accounts/c0000001-0000-0000-0000-000000000001/transactions'
+    },
+    documentation: 'https://github.com/bhaktofmahakal/dino-backend#api-usage'
   };
 });
 
