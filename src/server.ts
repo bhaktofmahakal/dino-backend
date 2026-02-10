@@ -13,12 +13,12 @@ const app = Fastify({
     transport:
       env.NODE_ENV === 'development'
         ? {
-            target: 'pino-pretty',
-            options: {
-              translateTime: 'HH:MM:ss Z',
-              ignore: 'pid,hostname',
-            },
-          }
+          target: 'pino-pretty',
+          options: {
+            translateTime: 'HH:MM:ss Z',
+            ignore: 'pid,hostname',
+          },
+        }
         : undefined,
   },
 });
@@ -28,6 +28,19 @@ app.register(cors, {
 });
 
 app.setErrorHandler(errorHandler);
+
+app.get('/', async () => {
+  return {
+    name: 'Dino Wallet Service API',
+    status: 'ONLINE',
+    version: '1.0.0',
+    endpoints: {
+      health: '/v1/health',
+      transactions: '/v1/transactions',
+      accounts: '/v1/accounts'
+    }
+  };
+});
 
 app.register(healthRoutes);
 app.register(transactionRoutes);
