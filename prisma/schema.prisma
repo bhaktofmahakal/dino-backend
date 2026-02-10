@@ -1,0 +1,115 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AccountType {
+  USER
+  SYSTEM
+}
+
+enum SystemRole {
+  TREASURY
+  BONUS_POOL
+  REVENUE
+}
+
+enum EntryType {
+  DEBIT
+  CREDIT
+}
+
+enum TransactionType {
+  TOP_UP
+  BONUS
+  SPEND
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model AssetType {
+  id          String   @id @default(uuid()) @db.Uuid
+  code        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  accounts Account[]
+
+  @@map("asset_types")
+}
+
+model Account {
+  id          String      @id @default(uuid()) @db.Uuid
+  accountType AccountType @map("account_type")
+  ownerId     String?     @map("owner_id") @db.Uuid
+  assetTypeId String      @map("asset_type_id") @db.Uuid
+  systemRole  SystemRole? @map("system_role")
+  balance     Decimal     @default(0) @db.Decimal(20, 2)
+  isUnlimited Boolean     @default(false) @map("is_unlimited")
+  version     BigInt      @default(0)
+  createdAt   DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  assetType     AssetType      @relation(fields: [assetTypeId], references: [id])
+  ledgerEntries LedgerEntry[]
+
+  @@unique([ownerId, assetTypeId], name: "unique_user_asset")
+  @@unique([systemRole, assetTypeId], name: "unique_system_asset")
+  @@index([ownerId, assetTypeId], name: "idx_accounts_owner_asset")
+  @@index([systemRole, assetTypeId], name: "idx_accounts_system_role")
+  @@map("accounts")
+}
+
+model LedgerEntry {
+  id            String    @id @default(uuid()) @db.Uuid
+  transactionId String    @map("transaction_id") @db.Uuid
+  accountId     String    @map("account_id") @db.Uuid
+  entryType     EntryType @map("entry_type")
+  amount        Decimal   @db.Decimal(20, 2)
+  balanceAfter  Decimal   @map("balance_after") @db.Decimal(20, 2)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  account     Account     @relation(fields: [accountId], references: [id])
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+
+  @@index([transactionId], name: "idx_ledger_transaction")
+  @@index([accountId, createdAt(sort: Desc)], name: "idx_ledger_account_history")
+  @@map("ledger_entries")
+}
+
+model Transaction {
+  id              String            @id @default(uuid()) @db.Uuid
+  idempotencyKey  String            @unique @map("idempotency_key") @db.VarChar(255)
+  transactionType TransactionType   @map("transaction_type")
+  status          TransactionStatus @default(PENDING)
+  metadata        Json?             @db.JsonB
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt     DateTime?         @map("completed_at") @db.Timestamptz(6)
+
+  ledgerEntries      LedgerEntry[]
+  idempotencyRecords IdempotencyStore[]
+
+  @@map("transactions")
+}
+
+model IdempotencyStore {
+  idempotencyKey  String      @id @map("idempotency_key") @db.VarChar(255)
+  transactionId   String      @map("transaction_id") @db.Uuid
+  responsePayload Json        @map("response_payload") @db.JsonB
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt       DateTime    @map("expires_at") @db.Timestamptz(6)
+
+  transaction Transaction @relation(fields: [transactionId], references: [id])
+
+  @@map("idempotency_store")
+}

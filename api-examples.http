@@ -1,0 +1,101 @@
+### Health Check
+GET http://localhost:8080/v1/health
+
+### Get User Balances (User 1)
+GET http://localhost:8080/v1/accounts/c0000001-0000-0000-0000-000000000001/balances
+
+### Get User Balances (User 2)
+GET http://localhost:8080/v1/accounts/c0000002-0000-0000-0000-000000000002/balances
+
+### Top-Up Transaction
+POST http://localhost:8080/v1/transactions/top-up
+Content-Type: application/json
+Idempotency-Key: top-up-{{$randomUUID}}
+
+{
+  "userId": "c0000001-0000-0000-0000-000000000001",
+  "assetTypeCode": "GOLD_COIN",
+  "amount": "100.00",
+  "paymentReference": "ext_payment_123",
+  "metadata": {
+    "source": "credit_card",
+    "last4": "4242"
+  }
+}
+
+### Bonus Transaction
+POST http://localhost:8080/v1/transactions/bonus
+Content-Type: application/json
+Idempotency-Key: bonus-{{$randomUUID}}
+
+{
+  "userId": "c0000001-0000-0000-0000-000000000001",
+  "assetTypeCode": "DIAMOND",
+  "amount": "50.00",
+  "reason": "REFERRAL_BONUS",
+  "metadata": {
+    "referredUserId": "c0000002-0000-0000-0000-000000000002"
+  }
+}
+
+### Spend Transaction
+POST http://localhost:8080/v1/transactions/spend
+Content-Type: application/json
+Idempotency-Key: spend-{{$randomUUID}}
+
+{
+  "userId": "c0000001-0000-0000-0000-000000000001",
+  "assetTypeCode": "GOLD_COIN",
+  "amount": "30.00",
+  "itemId": "item_legendary_sword",
+  "metadata": {
+    "category": "weapons",
+    "rarity": "legendary"
+  }
+}
+
+### Spend Transaction - Insufficient Balance (Will Fail)
+POST http://localhost:8080/v1/transactions/spend
+Content-Type: application/json
+Idempotency-Key: spend-fail-{{$randomUUID}}
+
+{
+  "userId": "c0000002-0000-0000-0000-000000000002",
+  "assetTypeCode": "GOLD_COIN",
+  "amount": "999999.00",
+  "itemId": "item_too_expensive"
+}
+
+### Get Transaction History (User 1)
+GET http://localhost:8080/v1/accounts/c0000001-0000-0000-0000-000000000001/transactions?limit=10&offset=0
+
+### Get Transaction History with Asset Filter
+GET http://localhost:8080/v1/accounts/c0000001-0000-0000-0000-000000000001/transactions?assetTypeCode=GOLD_COIN&limit=10&offset=0
+
+### Get Transaction Detail
+# Replace {transactionId} with actual transaction ID from previous responses
+GET http://localhost:8080/v1/transactions/{transactionId}
+
+### Test Idempotency - Retry Same Request
+POST http://localhost:8080/v1/transactions/top-up
+Content-Type: application/json
+Idempotency-Key: idempotency-test-12345
+
+{
+  "userId": "c0000001-0000-0000-0000-000000000001",
+  "assetTypeCode": "GOLD_COIN",
+  "amount": "25.00",
+  "paymentReference": "test_idempotency"
+}
+
+### Test Idempotency - Retry Same Request Again (Should Return Cached Response)
+POST http://localhost:8080/v1/transactions/top-up
+Content-Type: application/json
+Idempotency-Key: idempotency-test-12345
+
+{
+  "userId": "c0000001-0000-0000-0000-000000000001",
+  "assetTypeCode": "GOLD_COIN",
+  "amount": "25.00",
+  "paymentReference": "test_idempotency"
+}

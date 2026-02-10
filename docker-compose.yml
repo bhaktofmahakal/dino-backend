@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: wallet-postgres
+    environment:
+      POSTGRES_DB: wallet_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: shriram@108
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d wallet_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - wallet-network
+
+  api:
+    build: .
+    container_name: wallet-api
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgresql://postgres:shriram%40108@postgres:5432/wallet_db?schema=public
+      SERVER_PORT: 8080
+      NODE_ENV: production
+      LOG_LEVEL: info
+      IDEMPOTENCY_TTL_HOURS: 24
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - wallet-network
+    command: >
+      sh -c "
+        echo '⏳ Waiting for database...' &&
+        sleep 5 &&
+        echo '🔄 Running migrations...' &&
+        npx prisma migrate deploy &&
+        echo '🌱 Seeding database...' &&
+        npx prisma db seed &&
+        echo '🚀 Starting API server...' &&
+        node dist/server.js
+      "
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  wallet-network:
+    driver: bridge
